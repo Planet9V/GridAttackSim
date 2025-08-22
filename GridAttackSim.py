@@ -24,11 +24,11 @@ def open_research_window():
     entry_query.pack(side=LEFT, expand=True, fill=X)
 
     # Results frame
-    results_frame = Frame(research_window, padding=10)
-    results_frame.pack(expand=True, fill=BOTH, padx=5, pady=5)
+    results_frame_research = Frame(research_window, padding=10)
+    results_frame_research.pack(expand=True, fill=BOTH, padx=5, pady=5)
 
-    txt_results = Text(results_frame, wrap=WORD, height=20, width=80)
-    scrollbar = Scrollbar(results_frame, command=txt_results.yview)
+    txt_results = Text(results_frame_research, wrap=WORD, height=20, width=80)
+    scrollbar = Scrollbar(results_frame_research, command=txt_results.yview)
     txt_results.config(yscrollcommand=scrollbar.set)
 
     txt_results.pack(side=LEFT, expand=True, fill=BOTH)
@@ -157,8 +157,52 @@ lbl_files.grid(column=0, row=0, sticky="W", pady=5)
 Lb_files = Listbox(results_frame, width=60, selectmode=MULTIPLE, height=8)
 Lb_files.grid(row=1, column=0, columnspan=2, sticky="ew", padx=5)
 
+def open_comparison_window():
+    """
+    Opens a new window to display a comparison of selected result files.
+    """
+    selected_indices = Lb_files.curselection()
+    if len(selected_indices) < 2:
+        return
+
+    selected_filenames = [Lb_files.get(i) for i in selected_indices]
+    model_name = combo_smartgrid_model.get()
+
+    comparison_text = app_logic.compare_results(selected_filenames, model_name)
+
+    # Create new window
+    comp_window = Toplevel(window)
+    comp_window.title("Results Comparison")
+    comp_window.geometry("700x500")
+    comp_window.config(bg="#D6E2F3")
+
+    # Add text widget with scrollbar
+    text_frame = Frame(comp_window, padding=10)
+    text_frame.pack(expand=True, fill=BOTH)
+
+    results_widget = Text(text_frame, wrap=WORD, font=("Courier", 10))
+    scrollbar = Scrollbar(text_frame, command=results_widget.yview)
+    results_widget.config(yscrollcommand=scrollbar.set)
+
+    results_widget.pack(side=LEFT, expand=True, fill=BOTH)
+    scrollbar.pack(side=RIGHT, fill=Y)
+
+    results_widget.insert(END, comparison_text)
+    results_widget.config(state=DISABLED) # Make it read-only
+
 btn_show = Button(results_frame, text="Show Charts", command=lambda: app_logic.show_charts(Lb_files, combo_smartgrid_model.get()))
-btn_show.grid(column=0, row=2, columnspan=2, pady=10)
+btn_show.grid(column=0, row=2, pady=10)
+
+btn_compare = Button(results_frame, text="Compare Selected Results", state=DISABLED, command=open_comparison_window)
+btn_compare.grid(column=1, row=2, pady=10)
+
+def on_listbox_select(*args):
+    if len(Lb_files.curselection()) >= 2:
+        btn_compare.config(state=NORMAL)
+    else:
+        btn_compare.config(state=DISABLED)
+
+Lb_files.bind('<<ListboxSelect>>', on_listbox_select)
 
 # Start the GUI event loop
 window.mainloop()

@@ -1,5 +1,5 @@
 //Generated with prefix 'MarketTest'
-//Contained 500 houses - [184 156 160] in Weather Region 1
+//Contained 492 houses - [184 156 160] in Weather Region 1
 //Run with mininum_timestep=60 and recorders set at 60
 //Market ran with period=300, price cap=100.00, initial_price=50.00, initial_std_dev=10.00
 //       and capacity reference bid=100.00 and max capacity reference quantity=0.00
@@ -56,7 +56,7 @@ object auction {
 	warmup 0;
 	capacity_reference_object substation_transformer;
 	capacity_reference_property power_out_real;
-	max_capacity_reference_bid_quantity 300;
+	max_capacity_reference_bid_quantity 100;// 300;
 	curve_log_file "MarketTest_market_bids.csv";
 	curve_log_info EXTRA;
 	object player {

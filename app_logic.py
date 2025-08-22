@@ -3,9 +3,11 @@ import shutil
 import subprocess
 import datetime
 import glob
+import pandas as pd
 from tkinter import messagebox, END
 from graphviz import Source
 from openai import OpenAI
+from scripts import shared_utils
 
 # --- Constants ---
 # NOTE: In a production application, this should be an environment variable.
@@ -42,7 +44,7 @@ def perform_perplexity_search(query):
             },
         ]
         response = perplexity_client.chat.completions.create(
-            model="llama-3-sonar-large-32k-online",
+            model="sonar-deep-research",
             messages=messages,
         )
         return response.choices[0].message.content
@@ -110,21 +112,10 @@ def run_simulation(smartgrid_model_name, attack_type, start_time, end_time):
 
         messagebox.showerror("Simulation Failed", error_message)
 
-    # Rename the output files
-    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    attack_name_sanitized = attack_type.replace(" ", "_").replace("-", "")
-
-    # Rename price file
-    old_price_file = os.path.join(model_path, 'baseprice_clearedprice_clearedquantity.csv')
-    new_price_file = os.path.join(model_path, f'price_{attack_name_sanitized}_{current_time}.csv')
-    if os.path.exists(old_price_file):
-        shutil.move(old_price_file, new_price_file)
-
-    # Rename total load file
-    old_load_file = os.path.join(model_path, 'totalload.csv')
-    new_load_file = os.path.join(model_path, f'totalload_{attack_name_sanitized}_{current_time}.csv')
-    if os.path.exists(old_load_file):
-        shutil.move(old_load_file, new_load_file)
+    # Rename the output files if the simulation was successful
+    if proc.returncode == 0:
+        run_name = f"{smartgrid_model_name}_{attack_type}"
+        shared_utils.rename_output_files(model_path, run_name)
 
 
 def load_results(lb_files_widget, smartgrid_model_name, application_type):
@@ -174,3 +165,67 @@ def show_charts(lb_files_widget, smartgrid_model_name):
     totalload_arg = ":".join(plot_totalload)
 
     subprocess.run(['python3', 'plot_result.py', model_path, price_arg, totalload_arg])
+
+
+def compare_results(filenames, model_name):
+    """
+    Reads a list of result CSVs and produces a string comparing their key metrics.
+    """
+    model_dir_name = model_name.replace(" ", "_")
+    model_path = os.path.join(database_path, model_dir_name)
+
+    results_text = "--- Results Comparison ---\n\n"
+
+    dataframes = {}
+    for filename in filenames:
+        try:
+            full_path = os.path.join(model_path, filename)
+            # Adjust skiprows based on file type
+            if filename.startswith('price'):
+                df = pd.read_csv(full_path, delimiter=',', skiprows=9, names=["timestamp","capacity_reference_bid_price","current_market.clearing_price","current_market.clearing_quantity"])
+            elif filename.startswith('totalload'):
+                df = pd.read_csv(full_path, delimiter=',', skiprows=9, names=["timestamp","power_out_real"])
+            else:
+                continue # Skip unknown files
+            dataframes[filename] = df
+        except Exception as e:
+            results_text += f"Could not read or process {filename}: {e}\n\n"
+            continue
+
+    if not dataframes:
+        return "No valid result files to compare."
+
+    # Generate stats for each file
+    for filename, df in dataframes.items():
+        results_text += f"--- Statistics for {filename} ---\n"
+        if "current_market.clearing_price" in df.columns:
+            results_text += "Clearing Price Stats:\n"
+            results_text += df["current_market.clearing_price"].describe().to_string() + "\n\n"
+        if "power_out_real" in df.columns:
+            results_text += "Total Load (kW) Stats:\n"
+            results_text += (df["power_out_real"] / 1000).describe().to_string() + "\n\n"
+
+    # Compare files against the first file as a baseline
+    if len(dataframes) > 1:
+        baseline_name = list(dataframes.keys())[0]
+        baseline_df = dataframes[baseline_name]
+        results_text += f"--- Comparison against baseline: {baseline_name} ---\n"
+
+        for i in range(1, len(dataframes)):
+            compare_name = list(dataframes.keys())[i]
+            compare_df = dataframes[compare_name]
+            results_text += f"Comparing with: {compare_name}\n"
+
+            # Compare price if both have it
+            if "current_market.clearing_price" in baseline_df.columns and "current_market.clearing_price" in compare_df.columns:
+                price_diff = (compare_df['current_market.clearing_price'] - baseline_df['current_market.clearing_price']).describe()
+                results_text += "Difference in Clearing Price:\n"
+                results_text += price_diff.to_string() + "\n\n"
+
+            # Compare load if both have it
+            if "power_out_real" in baseline_df.columns and "power_out_real" in compare_df.columns:
+                load_diff = ((compare_df['power_out_real'] - baseline_df['power_out_real']) / 1000).describe()
+                results_text += "Difference in Total Load (kW):\n"
+                results_text += load_diff.to_string() + "\n\n"
+
+    return results_text
