@@ -64,6 +64,34 @@ etc.; this file uses the ZPL (ZeroMQ Property Language) format
 * `fncs_msg.txt`: Configure the communication between the FNCS broker
 and the ns-3 process
 
+### Creating Models from CSV Data
+
+As an alternative to manually creating `.glm` files, a helper script is provided to generate a basic model from a structured CSV file. This is useful for quickly creating new grid topologies from external data sources.
+
+The script `scripts/create_model_from_csv.py` reads a CSV file and generates a `.glm` file.
+
+**CSV Format:**
+
+The CSV file must have a header row with the following columns:
+`object_type,name,from_node,to_node,voltage,length,configuration,phases`
+
+**Example:**
+
+| object_type     | name      | from_node | to_node | voltage | length | configuration | phases |
+|-----------------|-----------|-----------|---------|---------|--------|---------------|--------|
+| node            | node1     |           |         | 7200    |        |               | ABCN   |
+| node            | node2     |           |         | 7200    |        |               | ABCN   |
+| overhead_line   | line1     | node1     | node2   |         | 2000   | lc300         | ABCN   |
+| transformer     | trans1    | node2     | node3   |         |        | tc400         | ABCN   |
+
+**Usage:**
+
+To run the script, provide the input CSV path and the desired output `.glm` path as arguments:
+```sh
+python3 scripts/create_model_from_csv.py path/to/your_data.csv Database/My_New_Model/new_model_partial.glm
+```
+This will generate a `.glm` file containing the objects defined in your CSV. You can then include this file in your main `GridLab-D.glm` file using a `#include` directive.
+
 
 ## How to add new attack types
 
