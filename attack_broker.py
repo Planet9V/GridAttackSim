@@ -69,7 +69,9 @@ def main():
 
     # Compile simulation
     print("Compiling ns-3 model...")
-    compile_proc = subprocess.run(['./compile-ns3.sh', 'run_ns-3.cc'],
+    # The CWD is the model path, so the script path is relative to that.
+    compile_script_path = '../../scripts/compile-ns3.sh'
+    compile_proc = subprocess.run([compile_script_path, 'run_ns-3.cc'],
                                   capture_output=True, text=True,
                                   cwd=model_path)
     if compile_proc.returncode != 0:
@@ -82,7 +84,8 @@ def main():
     print("Starting simulation... This may take a while.")
 
     # Run the simulation. This will block until run.sh completes.
-    sim_proc = subprocess.run(['./run.sh'],
+    run_script_path = '../../scripts/run.sh'
+    sim_proc = subprocess.run([run_script_path],
                               capture_output=True, text=True,
                               cwd=model_path)
 
