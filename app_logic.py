@@ -5,9 +5,49 @@ import datetime
 import glob
 from tkinter import messagebox, END
 from graphviz import Source
+from openai import OpenAI
 
-# This should be passed from the main GUI
+# --- Constants ---
+# NOTE: In a production application, this should be an environment variable.
+PERPLEXITY_API_KEY = "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"
 database_path = "Database/"
+
+# --- Perplexity AI Client ---
+# Note: This will raise an error if the API key is invalid.
+try:
+    perplexity_client = OpenAI(api_key=PERPLEXITY_API_KEY, base_url="https://api.perplexity.ai")
+except Exception as e:
+    perplexity_client = None
+    print(f"Could not initialize Perplexity AI client: {e}")
+
+def perform_perplexity_search(query):
+    """
+    Performs a search using the Perplexity AI API and returns the result.
+    """
+    if not perplexity_client:
+        return "Perplexity AI client is not available. Please check the API key."
+
+    try:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are an artificial intelligence assistant and you need to "
+                    "find information about power grid components, substations, and transmission lines."
+                ),
+            },
+            {
+                "role": "user",
+                "content": query,
+            },
+        ]
+        response = perplexity_client.chat.completions.create(
+            model="llama-3-sonar-large-32k-online",
+            messages=messages,
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"An error occurred while searching with Perplexity AI: {e}"
 
 def show_model(smartgrid_model_name):
     """

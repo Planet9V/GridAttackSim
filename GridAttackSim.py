@@ -4,7 +4,54 @@ from tkinter import ttk
 import tkinter.font as tkfont
 import app_logic # Import the new application logic module
 
-# Create the main window
+def open_research_window():
+    """
+    Opens a new window for performing research using the Perplexity API.
+    """
+    research_window = Toplevel(window)
+    research_window.title("AI Research Assistant")
+    research_window.geometry("700x500")
+    research_window.config(bg="#D6E2F3")
+
+    # Search frame
+    search_frame = Frame(research_window, padding=10)
+    search_frame.pack(fill=X, padx=5, pady=5)
+
+    lbl_search = Label(search_frame, text="Search Query:")
+    lbl_search.pack(side=LEFT, padx=(0, 5))
+
+    entry_query = Entry(search_frame, width=60)
+    entry_query.pack(side=LEFT, expand=True, fill=X)
+
+    # Results frame
+    results_frame = Frame(research_window, padding=10)
+    results_frame.pack(expand=True, fill=BOTH, padx=5, pady=5)
+
+    txt_results = Text(results_frame, wrap=WORD, height=20, width=80)
+    scrollbar = Scrollbar(results_frame, command=txt_results.yview)
+    txt_results.config(yscrollcommand=scrollbar.set)
+
+    txt_results.pack(side=LEFT, expand=True, fill=BOTH)
+    scrollbar.pack(side=RIGHT, fill=Y)
+
+    def perform_search():
+        query = entry_query.get()
+        if not query:
+            return
+        txt_results.delete(1.0, END)
+        txt_results.insert(END, "Searching...")
+        window.update_idletasks() # Update GUI to show "Searching..." message
+
+        result = app_logic.perform_perplexity_search(query)
+
+        txt_results.delete(1.0, END)
+        txt_results.insert(END, result)
+
+    btn_search = Button(search_frame, text="Search", command=perform_search)
+    btn_search.pack(side=LEFT, padx=(5, 0))
+
+
+# --- Main Window Setup ---
 window = Tk()
 window.title("Smart Grid Simulation")
 window.option_add("*font", "Times 14")
@@ -18,16 +65,13 @@ menu_file.add_command(label='New', font=("Times", 11))
 menu_file.add_separator()
 menu_file.add_command(label='Open', font=("Times", 11))
 menu_file.add_separator()
-menu_file.add_command(label='Exit', font=("Times", 11))
+menu_file.add_command(label='Exit', command=window.quit, font=("Times", 11))
 menu.add_cascade(label='File', menu=menu_file, font=("Times", 11))
-# ... (other menus can be added here)
 window.config(menu=menu)
-
 
 # --- Main Title ---
 lbl = Label(window, text="Smart Grid Attack Simulation System", font=("Times", 18), background="#D6E2F3", foreground="#000280")
 lbl.grid(column=0, row=0, columnspan=3, pady=10)
-
 
 # --- Simulation Configuration Frame ---
 config_frame = LabelFrame(window, text="Configuration", background="#D6E2F3", padding=10)
@@ -90,9 +134,8 @@ entry_end_time = Entry(config_frame, width=38)
 entry_end_time.grid(column=1, row=5, padx=5)
 entry_end_time.insert(0, "18:00:00") # Default value
 
-
 # --- Simulation Control Frame ---
-control_frame = LabelFrame(window, text="Simulation Control", background="#D6E2F3", padding=10)
+control_frame = LabelFrame(window, text="Controls", background="#D6E2F3", padding=10)
 control_frame.grid(column=0, row=2, padx=10, pady=10, sticky="ew")
 
 btn_run = Button(control_frame, text="Run Simulation", command=lambda: app_logic.run_simulation(combo_smartgrid_model.get(), combo_attack_type.get(), entry_start_time.get(), entry_end_time.get()))
@@ -101,6 +144,8 @@ btn_run.pack(side=LEFT, padx=10)
 btn_load_results= Button(control_frame, text="Load Results", command=lambda: app_logic.load_results(Lb_files, combo_smartgrid_model.get(), combo_application.get()))
 btn_load_results.pack(side=LEFT, padx=10)
 
+btn_research = Button(control_frame, text="AI Research", command=open_research_window)
+btn_research.pack(side=LEFT, padx=10)
 
 # --- Results Frame ---
 results_frame = LabelFrame(window, text="Results", background="#D6E2F3", padding=10)
@@ -114,7 +159,6 @@ Lb_files.grid(row=1, column=0, columnspan=2, sticky="ew", padx=5)
 
 btn_show = Button(results_frame, text="Show Charts", command=lambda: app_logic.show_charts(Lb_files, combo_smartgrid_model.get()))
 btn_show.grid(column=0, row=2, columnspan=2, pady=10)
-
 
 # Start the GUI event loop
 window.mainloop()
