@@ -44,12 +44,18 @@ def config(filepath, file_out, key, value, model_path):
         f.write(newdata)
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: python attack_broker.py <path_to_model> <attack_id>")
+    if len(sys.argv) != 5:
+        print("Usage: python attack_broker.py <path_to_model> <attack_id> <start_time> <end_time>")
         sys.exit(1)
 
     model_path = sys.argv[1]
     attack_id = sys.argv[2]
+    start_time = sys.argv[3]
+    end_time = sys.argv[4]
+
+    if attack_id != "0":
+        print(f"Attack scheduled from {start_time} to {end_time}.")
+        print("Note: Attack scheduling is a UI feature and is not yet implemented in the simulation core.")
 
     # Clean up previous run files and create new ones
     run_ns3_cc = os.path.join(model_path, "run_ns-3.cc")
