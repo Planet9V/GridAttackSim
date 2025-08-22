@@ -82,13 +82,13 @@ combo_smartgrid_model.grid(column=1, row=2)
 
 
 def show_model():
-
-    path_1 = database_path+combo_smartgrid_model.get().replace(" ", "_") + '/'+'GridLab-D.glm'
-    path_2 = database_path+combo_smartgrid_model.get().replace(" ", "_") + '/'+'GridLab-D.dot'
-    os.system('python glmMap.py ' + path_1 + ' ' + path_2)
+    model_dir_name = combo_smartgrid_model.get().replace(" ", "_")
+    model_path = os.path.join(database_path, model_dir_name)
+    path_1 = os.path.join(model_path, 'GridLab-D.glm')
+    path_2 = os.path.join(model_path, 'GridLab-D.dot')
+    subprocess.run(['python3', 'glmMap.py', path_1, path_2])
     s = Source.from_file(path_2)
     s.view()
-    print(os.getcwd())
 
 
 
@@ -169,30 +169,33 @@ combo_attack_type.grid(column=1, row=8)
 
 
 
-#Check Process is running or not
-def is_running(pid):        
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
-
-    return True
-
 def run():
     messagebox.showinfo("Message", "The simulation is running")
-    string_code = 'python attack_broker.py ' + database_path+combo_smartgrid_model.get().replace(" ", "_") + '/ '+ combo_attack_type.get()[0:1]
 
-    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    os.system(string_code)
+    model_dir_name = combo_smartgrid_model.get().replace(" ", "_")
+    model_path = os.path.join(database_path, model_dir_name)
+    attack_id = combo_attack_type.get().split(' ')[0]
+
+    # Run the simulation using python3 to be explicit
+    subprocess.run(['python3', 'attack_broker.py', model_path, attack_id])
 
     messagebox.showinfo("Message", "The simulation has been finished")
-    os.chdir(database_path+combo_smartgrid_model.get().replace(" ", "_") + '/')
-    os.system('mv baseprice_clearedprice_clearedquantity.csv ' + 'price_' +combo_attack_type.get().replace(" ", "_").replace("-", "")+'_'+ current_time + '.csv')
-   
-    os.system('mv totalload.csv ' + 'totalload_' +combo_attack_type.get().replace(" ", "_").replace("-", "")+'_'+ current_time + '.csv')
 
-    os.chdir("..")
-    os.chdir("..")
+    # Rename the output files
+    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    attack_name_sanitized = combo_attack_type.get().replace(" ", "_").replace("-", "")
+
+    # Rename price file
+    old_price_file = os.path.join(model_path, 'baseprice_clearedprice_clearedquantity.csv')
+    new_price_file = os.path.join(model_path, f'price_{attack_name_sanitized}_{current_time}.csv')
+    if os.path.exists(old_price_file):
+        shutil.move(old_price_file, new_price_file)
+
+    # Rename total load file
+    old_load_file = os.path.join(model_path, 'totalload.csv')
+    new_load_file = os.path.join(model_path, f'totalload_{attack_name_sanitized}_{current_time}.csv')
+    if os.path.exists(old_load_file):
+        shutil.move(old_load_file, new_load_file)
 
 
 
@@ -200,32 +203,25 @@ def run():
 
 def result():
     Lb_files.delete(0, END)
-    path = database_path+combo_smartgrid_model.get().replace(" ", "_") + '/'
+    model_dir_name = combo_smartgrid_model.get().replace(" ", "_")
+    path = os.path.join(database_path, model_dir_name)
     extension = 'csv'
-    print(os.getcwd())
-    os.chdir(path)
-    file_list = glob.glob('*.{}'.format(extension))
-    #print(file_list)
+
+    # Use full path for glob and get basenames for logic
+    file_list = glob.glob(os.path.join(path, f'*.{extension}'))
+    filenames = [os.path.basename(f) for f in file_list]
+
     j = 0
-    if combo_application.get() == "Demand/Response (DR)":
-        for i in range(len(file_list)):
-            if(file_list[i][0]=="t"):
-                #print(file_list[i].find('totalload'))
-                Lb_files.insert(j, file_list[i])
-                j = j+1
-    elif combo_application.get() == "Dynamic Pricing (DP)":
-        for i in range(len(file_list)):
-            if(file_list[i][0]=="p"):
-                #print(file_list[i].find('baseprice'))
-                Lb_files.insert(j, file_list[i])
-                j = j+1
-    else:
-        for i in range(len(file_list)):
-            if(file_list[i][0]=="p" or file_list[i][0]=="t"):
-                Lb_files.insert(j, file_list[i])
-                j = j+1
-    os.chdir("..")
-    os.chdir("..")
+    app_type = combo_application.get()
+
+    for f in filenames:
+        is_dr = app_type == "Demand/Response (DR)" and f.startswith("totalload")
+        is_dp = app_type == "Dynamic Pricing (DP)" and f.startswith("price")
+        is_both = app_type == "Both DR and DP" and (f.startswith("totalload") or f.startswith("price"))
+
+        if is_dr or is_dp or is_both:
+            Lb_files.insert(j, f)
+            j += 1
 
 
 
@@ -252,18 +248,24 @@ Lb_files.grid(row=12, column=1)
 
 
 def show():
-    plot_price = "null:"
-    plot_totalload = "null:"
+    plot_price = ["null"]
+    plot_totalload = ["null"]
     selection = Lb_files.curselection()
     for i in selection:
-        print(i)
-        if(Lb_files.get(i)[0]=='t'):
-            plot_totalload += Lb_files.get(i)+':'
-        elif(Lb_files.get(i)[0]=='p'):
-            plot_price += Lb_files.get(i)+':'
+        filename = Lb_files.get(i)
+        if filename.startswith('totalload'):
+            plot_totalload.append(filename)
+        elif filename.startswith('price'):
+            plot_price.append(filename)
 
+    model_dir_name = combo_smartgrid_model.get().replace(" ", "_")
+    model_path = os.path.join(database_path, model_dir_name)
 
-    os.system('python3 plot_result.py '+ database_path+combo_smartgrid_model.get().replace(" ", "_") + '/ '+ plot_price +' '+ plot_totalload)
+    # Join the filenames with a colon for the plot script argument
+    price_arg = ":".join(plot_price)
+    totalload_arg = ":".join(plot_totalload)
+
+    subprocess.run(['python3', 'plot_result.py', model_path, price_arg, totalload_arg])
 
 
 btn_show = Button(window, text="Show Charts", command=show)

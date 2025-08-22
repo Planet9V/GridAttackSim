@@ -25,18 +25,24 @@ fi
 export FNCS_LOG_STDOUT=no
 export FNCS_LOG_FILE=yes
 
-# run ns3 in separate window
-xterm -e ./run_ns-3 LinkModelGLDNS3.txt &
+echo "Starting simulation processes..."
 
-# run gld in separate window
-xterm -e gridlabd run_GridLab-D.glm &
+# run ns3, redirecting output to a log file
+./run_ns-3 LinkModelGLDNS3.txt > ns3.log 2>&1 &
+NS3_PID=$!
 
-# run fncs_broker in separate window
-xterm -e fncs_broker 2 &
+# run gld, redirecting output to a log file
+gridlabd run_GridLab-D.glm > gridlabd.log 2>&1 &
+GLD_PID=$!
 
-#Get Process ID
+# run fncs_broker, redirecting output to a log file
+fncs_broker 2 > fncs.log 2>&1 &
+FNCS_PID=$!
 
-#processId_2=$(ps -ef | grep run_GridLab-D | grep -v 'grep' | awk '{ printf $2 }')
+echo "Simulation running with PIDs: ns-3($NS3_PID), GridLAB-D($GLD_PID), FNCS($FNCS_PID)"
+echo "Waiting for all simulation processes to complete..."
 
+# Wait for all background processes to finish
+wait $NS3_PID $GLD_PID $FNCS_PID
 
-
+echo "All simulation processes have completed."
