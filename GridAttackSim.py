@@ -1,7 +1,5 @@
 from tkinter import *
-from tkinter.ttk import *
 from tkinter import ttk
-import tkinter.font as tkfont
 import app_logic # Import the new application logic module
 
 def open_research_window():
@@ -96,7 +94,7 @@ combo_application.current(0)
 combo_application.grid(column=1, row=1, padx=5)
 
 # Attack Category
-def on_attack_category_change(*args):
+def on_attack_category_change():
     category = combo_attack_category.get()
     if category == "Nefarious Activity":
         combo_attack_type['values']= ("1 - Channel Jamming - Cluster", "2 - Channel Jamming - Peer-to-Peer", "3 - DNS attacks - Cluster", "4 - DNS attacks - Peer-to-Peer", "5 - Injection Attacks - Control Systems", "6 - Injection Attacks - End-point Systems", "7 - Malicious Code - End-point Systems")
@@ -196,7 +194,7 @@ btn_show.grid(column=0, row=2, pady=10)
 btn_compare = Button(results_frame, text="Compare Selected Results", state=DISABLED, command=open_comparison_window)
 btn_compare.grid(column=1, row=2, pady=10)
 
-def on_listbox_select(*args):
+def on_listbox_select():
     if len(Lb_files.curselection()) >= 2:
         btn_compare.config(state=NORMAL)
     else:

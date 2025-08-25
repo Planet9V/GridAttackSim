@@ -1,15 +1,10 @@
 import tkinter as tk
 from tkinter.ttk import *
-from tkinter import ttk
-from pandas import DataFrame
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import os
 import sys
-import matplotlib
-import numpy as np
 import pandas as pd
-from matplotlib import interactive
 import matplotlib.ticker as plticker
 
 model_path = sys.argv[1]

@@ -2,7 +2,6 @@ import json
 import shutil
 import os
 import sys
-import fileinput
 import subprocess
 import time
 
