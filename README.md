@@ -9,7 +9,7 @@ it is based on a combination of [GridLAB-D](https://www.gridlabd.org),
 [FNCS](https://github.com/FNCS). The framework is extensible by end
 users, and the current release includes five smart grid topologies,
 two smart grid applications (demand response and dynamic pricing), and
-an attack library with four types of attacks (channel jamming,
+an attack library with five types of attacks (channel jamming, DNS attacks,
 malicious code, injection attacks, and message replay). GridAttackSim
 is being developed by the Cyber Range Organization and Design
 ([CROND](https://www.jaist.ac.jp/misc/crond/index-en.html))
@@ -49,10 +49,11 @@ framework.
 
 ## Installation
 
-GridAttackSim was developed and tested exclusively using the Ubuntu
-16.04 LTS operating system; either a physical host or a virtual
-machine installation can be used. Other Linux OSes may work, but have
-not been tested, nor has this software been tested on Windows.
+GridAttackSim was developed and tested on Ubuntu 16.04 LTS, but we recommend
+using a more modern LTS version such as **Ubuntu 20.04 or 22.04**.
+Either a physical host or a virtual machine installation can be used.
+Other Linux OSes may work, but have not been tested, nor has this
+software been tested on Windows.
 
 To run GridAttackSim, you have to first install and configure the
 three external components, FNCS, ns-3, and GridLAB-D. For details,
@@ -80,9 +81,15 @@ source code archive into a directory of your choice.
       Attack Category, Attack Type
    2. Click on the "Run Simulation" button to start the simulation
    3. When the simulation process finishes, click on "Load Results" to
-      display the output files
-   4. Select the output files of interest, then click on "Show Charts" to
-      visualize the results
+      display the output files in the list box.
+   4. Select one or more output files of interest, then click on "Show Charts" to
+      visualize the results.
+   5. To compare multiple results, select two or more files from the list
+      and click "Compare Selected Results".
+   6. You can use the "AI Research" button at any time to ask questions
+      about smart grids or cybersecurity concepts.
+
+   *Note: The GUI screenshot below is illustrative. The current interface includes additional features.*
 
 
 ## References

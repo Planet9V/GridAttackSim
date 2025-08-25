@@ -12,24 +12,28 @@ provide an overview below to facilitate further development and
 extensions of the software.
 
 ```
-├── Database/                           # Database folder
-│   ├── 13_Nodes_73_Houses/             # Example model: IEEE 13 node test feeder with 73 houses
-│       ├── GridLab-D.glm               # GridLAB-D main file
-│       ├── ns-3.cc                     # ns-3 main file
-│       ├── fncs_msg.txt                # (Generated) Configure FNCS broker to ns-3 communication
-│       ├── fncs.zpl                    # (Generated) Configure simulator topic subscription
-│       ├── LinkModelGLDNS3.txt         # Define number of houses and prefix
-│   ├── ... (other models) ...
-├── scripts/                            # Centralized scripts for simulation and setup
-│   ├── compile-ns3.sh                  # Compile ns-3 network model
-│   ├── creat_zpl_file.py               # Generate fncs.zpl
-│   ├── creat_rout_and_subscribe.py     # Generate fncs_msg.txt
-│   └── run.sh                          # Run ns-3, GridLab-D, and fncs_broker
+├── Database/
+│   ├── ... (model directories) ...
+├── Figures/
+│   ├── ... (image files for documentation) ...
+├── scripts/
+│   ├── batch_runner.py                 # Run multiple simulations from a config file
+│   ├── compile-ns3.sh                  # (Internal) Compile ns-3 network model
+│   ├── creat_zpl_file.py               # (Internal) Generate fncs.zpl for a model
+│   ├── creat_rout_and_subscribe.py     # (Internal) Generate fncs_msg.txt for a model
+│   ├── create_model_from_csv.py        # Helper to create a GLM file from CSV data
+│   ├── run.sh                          # (Internal) Run a single simulation
+│   └── shared_utils.py                 # Shared logic for file handling
 ├── GridAttackSim.py                    # Main application GUI file
-├── attack_broker.py                    # Run attack simulation
-├── attack_library.json                 # Attack library in JSON format
-├── glmMap.py                           # Convert GridLab-D.glm to graph
-├── plot_result.py                      # Plot results
+├── app_logic.py                        # Core application logic (separated from GUI)
+├── attack_broker.py                    # Script to orchestrate a single simulation run
+├── attack_library.json                 # Attack definitions in JSON format
+├── batch_config.json                   # Example configuration for the batch runner
+├── developer_guide.md                  # This file
+├── glmMap.py                           # (Legacy) Convert GridLab-D.glm to graph
+├── installation_guide.md               # System setup and installation instructions
+├── plot_result.py                      # Script to generate plots from result files
+└── requirements.txt                    # Python package dependencies
 ```
 
 
@@ -191,9 +195,54 @@ affected parameters for each of the currently implemented attack
 type. Note that different types of attacks might affect the same
 variables, yielding multiple possibilities for diagnosis.
 
-![GridAttackSim GUI](Figures/attack_types.png?raw=true "Attack types available in GridAttackSim")
+| Attack Type | Target Component(s) | Variables Affected |
+| :--- | :--- | :--- |
+| Channel Jamming | Network | `data_rate_cluster`, `delay_cluster`, `data_rate_peer_to_peer`, `delay_peer_to_peer` |
+| DNS Attacks | Network | `data_rate_cluster`, `delay_cluster`, `data_rate_peer_to_peer`, `delay_peer_to_peer` |
+| Injection Attacks | Control Systems, End-point Systems | `max_capacity_reference_bid_quantity`, `comfort_level` |
+| Malicious Code | End-point Systems | `proxy_clear_price`, `proxy_price_cap` |
+| Replay of Messages | Network | `data_rate_cluster`, `delay_cluster`, `data_rate_peer_to_peer`, `delay_peer_to_peer` |
 
 If you simply want to modify the effects of one of the currently
 implemented attacks, you should change the values of the affected
 values, then run the simulation to see what are the consequences on
 the smart grid.
+
+
+### How to Run Simulations in Batch
+
+The framework includes a script to run multiple simulation permutations from a single configuration file. This is useful for running large-scale experiments.
+
+**Configuration:**
+
+The batch runner uses a JSON configuration file (an example is provided in `batch_config.json`). The file should contain a list of simulation runs. Each run object has two required keys:
+*   `model`: The name of the model directory in `Database/`.
+*   `attack_id`: The ID of the attack from `attack_library.json` ("0" for no attack).
+
+**Example `batch_config.json`:**
+```json
+[
+    {
+        "model": "13_Nodes_73_Houses",
+        "attack_id": "0"
+    },
+    {
+        "model": "13_Nodes_73_Houses",
+        "attack_id": "1"
+    },
+    {
+        "model": "4_Nodes_492_Houses",
+        "attack_id": "5"
+    }
+]
+```
+
+**Usage:**
+
+To execute the batch run, use the `scripts/batch_runner.py` script, passing the path to your configuration file as an argument.
+
+```sh
+python3 scripts/batch_runner.py batch_config.json
+```
+
+The script will iterate through each configuration, run the simulation, and save the results. The output files for each run will be automatically renamed using the run's name from the config (or a default like "run_1") and a timestamp (e.g., `price_run_1_20231027_103000.csv`).

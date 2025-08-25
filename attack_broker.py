@@ -47,6 +47,14 @@ def main():
         print("Usage: python attack_broker.py <path_to_model> <attack_id> <start_time> <end_time>")
         sys.exit(1)
 
+    fncs_install_path = os.environ.get("FNCS_INSTALL")
+    if not fncs_install_path:
+        # If the variable is not set, default to the standard location.
+        # This makes the script more robust for different environments.
+        default_path = os.path.expanduser("~/FNCS-install")
+        print(f"Warning: FNCS_INSTALL not set. Defaulting to {default_path}")
+        fncs_install_path = default_path
+
     model_path = sys.argv[1]
     attack_id = sys.argv[2]
     start_time = sys.argv[3]
@@ -76,13 +84,18 @@ def main():
     print("Compiling ns-3 model...")
     # The CWD is the model path, so the script path is relative to that.
     compile_script_path = '../../scripts/compile-ns3.sh'
-    compile_proc = subprocess.run([compile_script_path, 'run_ns-3.cc'],
+
+    # Create a copy of the current environment to pass to the subprocess
+    env = os.environ.copy()
+    env["FNCS_INSTALL"] = fncs_install_path # Ensure the correct path is set
+
+    compile_proc = subprocess.run([compile_script_path],
                                   capture_output=True, text=True,
-                                  cwd=model_path)
+                                  cwd=model_path, env=env)
     if compile_proc.returncode != 0:
         print("Compilation failed!")
+        # The compile script's output is now in stdout, not just stderr
         print(compile_proc.stdout)
-        print(compile_proc.stderr)
         return # Exit if compilation fails
 
     print("Compilation successful.")

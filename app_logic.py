@@ -52,8 +52,15 @@ def perform_perplexity_search(query):
         return f"An error occurred while searching with Perplexity AI: {e}"
 
 def show_model(smartgrid_model_name):
-    """
-    Generates and displays a .dot model of the selected smart grid.
+    """Generates and displays a .dot model of the selected smart grid.
+
+    This function calls the legacy `glmMap.py` script to convert a
+    GridLab-D model file (.glm) into a graphviz .dot file, and then
+    uses the graphviz library to render and display it.
+
+    Args:
+        smartgrid_model_name (str): The name of the smart grid model,
+            as selected in the GUI (e.g., "13 Nodes 73 Houses").
     """
     model_dir_name = smartgrid_model_name.replace(" ", "_")
     model_path = os.path.join(database_path, model_dir_name)
@@ -71,8 +78,19 @@ def show_model(smartgrid_model_name):
 
 
 def run_simulation(smartgrid_model_name, attack_type, start_time, end_time):
-    """
-    Runs the attack simulation and renames the output files.
+    """Initiates a simulation run via the attack_broker.py script.
+
+    This function gathers the simulation parameters from the GUI, calls
+    the `attack_broker.py` script to run the co-simulation, and displays
+    the results (success or failure) to the user in a message box.
+    If the simulation is successful, it renames the output files to
+    prevent them from being overwritten on subsequent runs.
+
+    Args:
+        smartgrid_model_name (str): The name of the grid model.
+        attack_type (str): The string describing the selected attack.
+        start_time (str): The simulation start time for the attack.
+        end_time (str): The simulation end time for the attack.
     """
     messagebox.showinfo("Message", "The simulation is running")
 
@@ -119,8 +137,17 @@ def run_simulation(smartgrid_model_name, attack_type, start_time, end_time):
 
 
 def load_results(lb_files_widget, smartgrid_model_name, application_type):
-    """
-    Loads the simulation result files into the listbox.
+    """Loads simulation result files into the GUI listbox.
+
+    This function scans the specified model's directory for CSV files,
+    filters them based on the selected application type (DR, DP, or Both),
+    and populates the listbox widget with the relevant filenames.
+
+    Args:
+        lb_files_widget (tkinter.Listbox): The listbox widget to populate.
+        smartgrid_model_name (str): The name of the grid model.
+        application_type (str): The application type ("Demand/Response (DR)",
+            "Dynamic Pricing (DP)", or "Both DR and DP").
     """
     lb_files_widget.delete(0, END)
     model_dir_name = smartgrid_model_name.replace(" ", "_")
@@ -143,8 +170,17 @@ def load_results(lb_files_widget, smartgrid_model_name, application_type):
 
 
 def show_charts(lb_files_widget, smartgrid_model_name):
-    """
-    Calls the plot_result.py script to show charts for selected files.
+    """Calls the plot_result.py script to display charts for selected files.
+
+    This function retrieves the selected filenames from the listbox,
+    separates them into price and total load files, and then calls the
+    `plot_result.py` script with the appropriate arguments to generate
+    and display the plots.
+
+    Args:
+        lb_files_widget (tkinter.Listbox): The listbox widget containing
+            the result filenames.
+        smartgrid_model_name (str): The name of the grid model.
     """
     plot_price = ["null"]
     plot_totalload = ["null"]
@@ -168,8 +204,19 @@ def show_charts(lb_files_widget, smartgrid_model_name):
 
 
 def compare_results(filenames, model_name):
-    """
-    Reads a list of result CSVs and produces a string comparing their key metrics.
+    """Generates a statistical comparison of selected result files.
+
+    This function reads two or more result CSV files, uses the pandas
+    library to calculate descriptive statistics for each, and also
+    calculates the statistical difference between each file and the first
+    file (as a baseline).
+
+    Args:
+        filenames (list): A list of result CSV filenames to compare.
+        model_name (str): The name of the grid model.
+
+    Returns:
+        str: A formatted string containing the full statistical comparison.
     """
     model_dir_name = model_name.replace(" ", "_")
     model_path = os.path.join(database_path, model_dir_name)
