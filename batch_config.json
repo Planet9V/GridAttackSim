@@ -1,0 +1,23 @@
+[
+  {
+    "run_name": "13_Nodes_Jamming_Attack",
+    "model": "13_Nodes_73_Houses",
+    "attack_id": "1",
+    "start_time": "12:00:00",
+    "end_time": "18:00:00"
+  },
+  {
+    "run_name": "4_Nodes_Injection_Attack",
+    "model": "4_Nodes_492_Houses",
+    "attack_id": "5",
+    "start_time": "10:00:00",
+    "end_time": "14:00:00"
+  },
+  {
+    "run_name": "13_Nodes_No_Attack",
+    "model": "13_Nodes_15_Houses",
+    "attack_id": "0",
+    "start_time": "00:00:00",
+    "end_time": "00:00:00"
+  }
+]

@@ -33,7 +33,7 @@
       "attack_schedule": [
         {
           "schedule_id": "1",
-          "description": "This is a description",
+          "description": "Attack schedule for the simulation.",
           "file": "schedule_1",
           "start_time": "12:00:00",
           "end_time": "18:00:00"
@@ -75,7 +75,7 @@
       "attack_schedule": [
         {
           "schedule_id": "1",
-          "description": "This is a description",
+          "description": "Attack schedule for the simulation.",
           "start_time": "start_time",
           "end_time": "end_time"
         }
@@ -114,7 +114,7 @@
       "attack_schedule": [
         {
           "schedule_id": "1",
-          "description": "This is a description",
+          "description": "Attack schedule for the simulation.",
           "start_time": "start_time",
           "end_time": "end_time"
         }
@@ -152,7 +152,7 @@
       "attack_schedule": [
         {
           "schedule_id": "1",
-          "description": "This is a description",
+          "description": "Attack schedule for the simulation.",
           "start_time": "start_time",
           "end_time": "end_time"
         }
@@ -189,7 +189,7 @@
       "attack_schedule": [
         {
           "schedule_id": "1",
-          "description": "This is a description",
+          "description": "Attack schedule for the simulation.",
           "start_time": "start_time",
           "end_time": "end_time"
         }
@@ -230,7 +230,7 @@
       "attack_schedule": [
         {
           "schedule_id": "1",
-          "description": "This is a description",
+          "description": "Attack schedule for the simulation.",
           "start_time": "start_time",
           "end_time": "end_time"
         }
@@ -271,7 +271,7 @@
       "attack_schedule": [
         {
           "schedule_id": "1",
-          "description": "This is a description",
+          "description": "Attack schedule for the simulation.",
           "start_time": "start_time",
           "end_time": "end_time"
         }
@@ -312,7 +312,7 @@
       "attack_schedule": [
         {
           "schedule_id": "1",
-          "description": "This is a description",
+          "description": "Attack schedule for the simulation.",
           "start_time": "start_time",
           "end_time": "end_time"
         }
@@ -352,7 +352,7 @@
       "attack_schedule": [
         {
           "schedule_id": "1",
-          "description": "This is a description",
+          "description": "Attack schedule for the simulation.",
           "start_time": "start_time",
           "end_time": "end_time"
         }

@@ -3,40 +3,13 @@ import shutil
 import os
 import sys
 import fileinput
-import matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 import subprocess
-import sys
-from subprocess import check_output
 import time
 
-
-filter = "JSON file (*.json)|*.json|All Files (*.*)|*.*||"
 with open('attack_library.json', 'r') as f:
     distros_dict = json.load(f)
 
-path = "Database/"
-
-
-def print_function():
-    print("------------------------------------------")
-    print("Welcome to Smart Grid Simulation System!")
-    print("------------------------------------------")
-    print("Please select Attack ID from:  ")
-    for x in range(len(distros_dict['object'])):
-        print("------------------------------------------")
-        print('Attack ID:  ' + str(distros_dict['object'][x]["attack_id"]))
-        print('Category Name:  ' + str(distros_dict['object'][x]["category_name"]))
-
-        print('Attack Type: ' + str(distros_dict['object'][x]["name"]))
-
-        print("------------------------------------------")
-        
-
-
-def readfile(index):
+def readfile(index, model_path):
     for x in range(len(distros_dict['object'])):
         if distros_dict['object'][x]["attack_id"]==str(index):
             print("\n \n------------------------------------------")
@@ -54,57 +27,81 @@ def readfile(index):
             print('- Affected Value: ')
             for key, value in affected_value.items():
                 print('\t- ' + str(key) + " = " + str(value))
-                config(filepath, file_out, key, value)
+                config(filepath, file_out, key, value, model_path)
 
 
-def config(filepath, file_out, key, value):
-    f = open(file_out,'r')
-    filedata = f.read()
-    f.close()
+def config(filepath, file_out, key, value, model_path):
+    full_file_out_path = os.path.join(model_path, file_out)
+    with open(full_file_out_path, 'r') as f:
+        filedata = f.read()
+
     if filepath == "ns-3.cc":
         newdata = filedata.replace("//Flag", "//Flag"+ "\n \t" + key + " = " + str(value) + ";//")
     else:
         newdata = filedata.replace(key,key + " " + str(value) + ";//")
-    f = open(file_out,'w')
-    f.write(newdata)
-    f.close()
 
-
-
-#Check Process is running or not
-def is_running(pid):        
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
-
-    return True
+    with open(full_file_out_path, 'w') as f:
+        f.write(newdata)
 
 def main():
-    os.system('clear')
-    os.chdir(sys.argv[1])
-    os.remove("run_ns-3.cc")
-    os.remove("run_GridLab-D.glm")
+    if len(sys.argv) != 5:
+        print("Usage: python attack_broker.py <path_to_model> <attack_id> <start_time> <end_time>")
+        sys.exit(1)
+
+    model_path = sys.argv[1]
+    attack_id = sys.argv[2]
+    start_time = sys.argv[3]
+    end_time = sys.argv[4]
+
+    if attack_id != "0":
+        print(f"Attack scheduled from {start_time} to {end_time}.")
+        print("Note: Attack scheduling is a UI feature and is not yet implemented in the simulation core.")
+
+    # Clean up previous run files and create new ones
+    run_ns3_cc = os.path.join(model_path, "run_ns-3.cc")
+    run_gridlabd_glm = os.path.join(model_path, "run_GridLab-D.glm")
+    if os.path.exists(run_ns3_cc):
+        os.remove(run_ns3_cc)
+    if os.path.exists(run_gridlabd_glm):
+        os.remove(run_gridlabd_glm)
+
     time.sleep(1)
-    shutil.copyfile("ns-3.cc", "run_ns-3.cc")
-    shutil.copyfile("GridLab-D.glm", "run_GridLab-D.glm")
-    print_function()
 
-    readfile(sys.argv[2])
+    shutil.copyfile(os.path.join(model_path, "ns-3.cc"), run_ns3_cc)
+    shutil.copyfile(os.path.join(model_path, "GridLab-D.glm"), run_gridlabd_glm)
 
+    # Apply attack configuration
+    readfile(attack_id, model_path)
 
-    p1 = subprocess.Popen('./compile-ns3.sh run_ns-3.cc', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, executable='/bin/bash')
+    # Compile simulation
+    print("Compiling ns-3 model...")
+    # The CWD is the model path, so the script path is relative to that.
+    compile_script_path = '../../scripts/compile-ns3.sh'
+    compile_proc = subprocess.run([compile_script_path, 'run_ns-3.cc'],
+                                  capture_output=True, text=True,
+                                  cwd=model_path)
+    if compile_proc.returncode != 0:
+        print("Compilation failed!")
+        print(compile_proc.stdout)
+        print(compile_proc.stderr)
+        return # Exit if compilation fails
 
-    p1.wait()
-    time.sleep(2)
-    p2 = subprocess.Popen('./run.sh', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, executable='/bin/bash')
-    time.sleep(2)
-    child = subprocess.Popen('pgrep xterm', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, executable='/bin/bash')
-    pid = int(child.communicate()[0].split('\n')[0])
-    print("The Simulation is running!")
-    print("Process PID: "+str(pid))
-    while is_running(pid):
-        time.sleep(1)
+    print("Compilation successful.")
+    print("Starting simulation... This may take a while.")
+
+    # Run the simulation. This will block until run.sh completes.
+    run_script_path = '../../scripts/run.sh'
+    sim_proc = subprocess.run([run_script_path],
+                              capture_output=True, text=True,
+                              cwd=model_path)
+
+    # The simulation logs are now in ns3.log, gridlabd.log, and fncs.log
+    # in the model directory. We can print the output of run.sh itself.
+    print(sim_proc.stdout)
+    if sim_proc.returncode != 0:
+        print("Simulation script finished with errors.")
+        print(sim_proc.stderr)
+
     print("Finished!")
 
 

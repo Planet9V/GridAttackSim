@@ -1,4 +1,3 @@
-
 # Developer Guide
 
 In this developer guide we provide information to help those
@@ -13,21 +12,19 @@ provide an overview below to facilitate further development and
 extensions of the software.
 
 ```
-├── Database                            # Database folder
-│   ├── 13_Nodes_73_Houses              # IEEE 13 node test feeder with 73 houses
+├── Database/                           # Database folder
+│   ├── 13_Nodes_73_Houses/             # Example model: IEEE 13 node test feeder with 73 houses
 │       ├── GridLab-D.glm               # GridLAB-D main file
 │       ├── ns-3.cc                     # ns-3 main file
-│       ├── compile-ns3.sh              # Compile ns-3 network model
-│       ├── creat_zpl_file.py           # Generate fncs.zpl
-│       ├── creat_rout_and_subscribe.py # Generate fncs_msg.txt
-│       ├── run.sh                      # Run ns-3, GridLab-D, and fncs_broker
-│       ├── fncs_msg.txt                # Configure FNCS broker to ns-3 communication
-│       ├── fncs.zpl                    # Configure simulator topic subscription
+│       ├── fncs_msg.txt                # (Generated) Configure FNCS broker to ns-3 communication
+│       ├── fncs.zpl                    # (Generated) Configure simulator topic subscription
 │       ├── LinkModelGLDNS3.txt         # Define number of houses and prefix
-│   ├── 13_Nodes_15_Houses              # IEEE 13 node test feeder with 15 houses
-│   ├── 1_Node_255_Houses               # Simple test feeder developed by the FNCS team
-│   ├── 4_Nodes_1_House                 # IEEE 4 node test feeder with 1 house
-│   ├── 4_Nodes_492_Houses              # IEEE 4 node test feeder with 492 houses
+│   ├── ... (other models) ...
+├── scripts/                            # Centralized scripts for simulation and setup
+│   ├── compile-ns3.sh                  # Compile ns-3 network model
+│   ├── creat_zpl_file.py               # Generate fncs.zpl
+│   ├── creat_rout_and_subscribe.py     # Generate fncs_msg.txt
+│   └── run.sh                          # Run ns-3, GridLab-D, and fncs_broker
 ├── GridAttackSim.py                    # Main application GUI file
 ├── attack_broker.py                    # Run attack simulation
 ├── attack_library.json                 # Attack library in JSON format
@@ -43,11 +40,18 @@ directory similar to the ones existing in the `Database` folder. To
 set up an existing raw `GridLab-D.glm` file for use with
 GridAttackSim, you need to add `fncs_msg` and auction objects in it,
 so as to configure the GridLAB-D process connection with the FNCS
-broker. This can be achieved by running the two scripts shown below:
+broker.
 
-```
-python3 creat_zpl_file.py
-python3 creat_rout_and_subscribe.py
+This can be achieved by running the two helper scripts located in the `scripts/` directory. These scripts now require command-line arguments to specify the parameters for the new topology.
+
+For example, if you create a new model in `Database/My_New_Model/` with 50 houses and a controller prefix of `ns3_1/MY_NODE`, you would run the following commands from the project root:
+
+```sh
+# Usage: python3 <script_path> <num_houses> <output_dir>
+python3 scripts/creat_zpl_file.py 50 Database/My_New_Model/
+
+# Usage: python3 <script_path> <num_houses> <prefix> <output_dir>
+python3 scripts/creat_rout_and_subscribe.py 50 ns3_1/MY_NODE Database/My_New_Model/
 ```
 
 The generation scripts for FNCS communication configuration files use
@@ -59,6 +63,34 @@ interest, such as market ID, market-clearing price, submit bid state,
 etc.; this file uses the ZPL (ZeroMQ Property Language) format
 * `fncs_msg.txt`: Configure the communication between the FNCS broker
 and the ns-3 process
+
+### Creating Models from CSV Data
+
+As an alternative to manually creating `.glm` files, a helper script is provided to generate a basic model from a structured CSV file. This is useful for quickly creating new grid topologies from external data sources.
+
+The script `scripts/create_model_from_csv.py` reads a CSV file and generates a `.glm` file.
+
+**CSV Format:**
+
+The CSV file must have a header row with the following columns:
+`object_type,name,from_node,to_node,voltage,length,configuration,phases`
+
+**Example:**
+
+| object_type     | name      | from_node | to_node | voltage | length | configuration | phases |
+|-----------------|-----------|-----------|---------|---------|--------|---------------|--------|
+| node            | node1     |           |         | 7200    |        |               | ABCN   |
+| node            | node2     |           |         | 7200    |        |               | ABCN   |
+| overhead_line   | line1     | node1     | node2   |         | 2000   | lc300         | ABCN   |
+| transformer     | trans1    | node2     | node3   |         |        | tc400         | ABCN   |
+
+**Usage:**
+
+To run the script, provide the input CSV path and the desired output `.glm` path as arguments:
+```sh
+python3 scripts/create_model_from_csv.py path/to/your_data.csv Database/My_New_Model/new_model_partial.glm
+```
+This will generate a `.glm` file containing the objects defined in your CSV. You can then include this file in your main `GridLab-D.glm` file using a `#include` directive.
 
 
 ## How to add new attack types
