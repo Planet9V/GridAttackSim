@@ -10,6 +10,7 @@ from openai import OpenAI
 from scripts import shared_utils
 
 # --- Constants ---
+__version__ = "2.0.0"
 # NOTE: In a production application, this should be an environment variable.
 PERPLEXITY_API_KEY = "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"
 database_path = "Database/"
