@@ -2,101 +2,204 @@ import json
 import shutil
 import os
 import sys
-import fileinput
 import subprocess
 import time
 
-with open('attack_library.json', 'r') as f:
-    distros_dict = json.load(f)
+# --- Helper Functions ---
 
-def readfile(index, model_path):
-    for x in range(len(distros_dict['object'])):
-        if distros_dict['object'][x]["attack_id"]==str(index):
-            print("\n \n------------------------------------------")
-            print("You selected Attack ID: " + str(distros_dict['object'][x]["attack_id"]))
-            print('- Category Name:  ' + str(distros_dict['object'][x]["category_name"]))
-            print('- Attack Type: ' + str(distros_dict['object'][x]["name"]))
-            print('- Description:  ' + str(distros_dict['object'][x]["attack_type"][0]["description"]))
-            print('- Attack Component:  ' + str(distros_dict['object'][x]["attack_component"][0]["component_name"]))
-            print('- Start Time:  ' + str(distros_dict['object'][x]["attack_schedule"][0]["start_time"]))
-            print('- End Time: ' + str(distros_dict['object'][x]["attack_schedule"][0]["end_time"]))
-            
-            filepath = str(distros_dict['object'][x]["attack_component"][0]["file"])
-            file_out = str("run_" + filepath)
-            affected_value = distros_dict['object'][x]["attack_type"][0]["affected_value"][0]
-            print('- Affected Value: ')
-            for key, value in affected_value.items():
-                print('\t- ' + str(key) + " = " + str(value))
-                config(filepath, file_out, key, value, model_path)
+def time_to_seconds(time_str):
+    """Converts a HH:MM:SS string to seconds."""
+    h, m, s = map(int, time_str.split(':'))
+    return h * 3600 + m * 60 + s
 
+def get_attack_details(attack_id):
+    """Retrieves attack details from the JSON library."""
+    with open('attack_library.json', 'r') as f:
+        distros_dict = json.load(f)
+    for attack in distros_dict['object']:
+        if attack["attack_id"] == str(attack_id):
+            return attack
+    return None
 
-def config(filepath, file_out, key, value, model_path):
-    full_file_out_path = os.path.join(model_path, file_out)
-    with open(full_file_out_path, 'r') as f:
+def config_ns3(model_path, affected_values, start_seconds, end_seconds):
+    """
+    Modifies the run_ns-3.cc file to include scheduled attack parameters.
+    """
+    filepath = os.path.join(model_path, "run_ns-3.cc")
+    with open(filepath, 'r') as f:
         filedata = f.read()
 
-    if filepath == "ns-3.cc":
-        newdata = filedata.replace("//Flag", "//Flag"+ "\n \t" + key + " = " + str(value) + ";//")
-    else:
-        newdata = filedata.replace(key,key + " " + str(value) + ";//")
+    # 1. Prepare C++ code for injection
+    normal_values = {
+        "data_rate_cluster": 10000000, "delay_cluster": 3,
+        "data_rate_peer_to_peer": 40000000, "delay_peer_to_peer": 3
+    }
 
-    with open(full_file_out_path, 'w') as f:
-        f.write(newdata)
+    attack_body = ""
+    normal_body = ""
+
+    for key, value in affected_values.items():
+        normal_value = normal_values.get(key)
+        if normal_value is None:
+            continue
+
+        if 'cluster' in key:
+            channel_vector = 'g_csmaChannels'
+            attribute_name = "DataRate" if "data_rate" in key else "Delay"
+            attribute_type = "DataRateValue" if "data_rate" in key else "TimeValue"
+            attack_val_str = str(value) if "data_rate" in key else f"MilliSeconds({value})"
+            normal_val_str = str(normal_value) if "data_rate" in key else f"MilliSeconds({normal_value})"
+            
+            attack_body += f'for(auto const& channel : {channel_vector}) {{ channel->SetAttribute("{attribute_name}", {attribute_type}({attack_val_str})); }}\n'
+            normal_body += f'for(auto const& channel : {channel_vector}) {{ channel->SetAttribute("{attribute_name}", {attribute_type}({normal_val_str})); }}\n'
+
+        elif 'peer_to_peer' in key:
+            channel_vector = 'g_p2pDevices'
+            attribute_name = "DataRate" if "data_rate" in key else "Delay"
+            attribute_type = "DataRateValue" if "data_rate" in key else "TimeValue"
+            attack_val_str = str(value) if "data_rate" in key else f"MilliSeconds({value})"
+            normal_val_str = str(normal_value) if "data_rate" in key else f"MilliSeconds({normal_value})"
+
+            attack_body += f'for(auto const& dev : g_p2pDevices) {{ dev->SetAttribute("{attribute_name}", {attribute_type}({attack_val_str})); }}\n'
+            normal_body += f'for(auto const& dev : g_p2pDevices) {{ dev->SetAttribute("{attribute_name}", {attribute_type}({normal_val_str})); }}\n'
+
+
+    # 2. Inject C++ code into the file content
+    header_injection = """
+#include <vector>
+#include "ns3/csma-channel.h"
+#include "ns3/point-to-point-channel.h"
+std::vector<Ptr<CsmaChannel>> g_csmaChannels;
+std::vector<Ptr<PointToPointNetDevice>> g_p2pDevices;
+"""
+    functions_injection = f"""
+void SetAttackParameters() {{
+    NS_LOG_UNCOND("ATTACK STARTING");
+    {attack_body}
+}}
+void SetNormalParameters() {{
+    NS_LOG_UNCOND("ATTACK ENDING");
+    {normal_body}
+}}
+"""
+    schedule_injection = f"""
+    Simulator::Schedule(Seconds({start_seconds}.0), &SetAttackParameters);
+    Simulator::Schedule(Seconds({end_seconds}.0), &SetNormalParameters);
+"""
+    csma_capture_injection = """
+    csmaDevices[i] = chelper.Install(model->csma[i]);
+    Ptr<Channel> channel = csmaDevices[i].Get(0)->GetChannel();
+    g_csmaChannels.push_back(DynamicCast<CsmaChannel>(channel));
+"""
+    p2p_capture_injection = """
+            NetDeviceContainer csma1dbell1=phelper3.Install(
+                    model->market.Get(0), model->csma[i].Get(0));
+            g_p2pDevices.push_back(DynamicCast<PointToPointNetDevice>(csma1dbell1.Get(0)));
+            g_p2pDevices.push_back(DynamicCast<PointToPointNetDevice>(csma1dbell1.Get(1)));
+"""
+
+    filedata = filedata.replace('using namespace std;', 'using namespace std;\n' + header_injection + functions_injection)
+    filedata = filedata.replace('csmaDevices[i] = chelper.Install(model->csma[i]);', csma_capture_injection)
+    filedata = filedata.replace('NetDeviceContainer csma1dbell1=phelper3.Install(\n'
+                                '                    model->market.Get(0), model->csma[i].Get(0));', p2p_capture_injection)
+    filedata = filedata.replace('Simulator::Run ();', schedule_injection + '\n    Simulator::Run ();')
+    # Remove old placeholder
+    filedata = filedata.replace('//Flag', '')
+
+    with open(filepath, 'w') as f:
+        f.write(filedata)
+
+def config_glm(model_path, affected_values):
+    """
+    Modifies the run_GridLab-D.glm file with all specified attack values.
+    """
+    filepath = os.path.join(model_path, "run_GridLab-D.glm")
+    with open(filepath, 'r') as f:
+        filedata = f.read()
+
+    for key, value in affected_values.items():
+        filedata = filedata.replace(key, f"{key} {value};")
+
+    with open(filepath, 'w') as f:
+        f.write(filedata)
+
+def apply_attack_config(attack_id, model_path, start_time_str, end_time_str):
+    """
+    Reads attack details and modifies the appropriate simulation files.
+    """
+    attack = get_attack_details(attack_id)
+    if not attack:
+        print(f"No attack found for ID: {attack_id}")
+        return
+
+    print("\n\n------------------------------------------")
+    print(f"Selected Attack ID: {attack['attack_id']}")
+    print(f"- Category Name:  {attack['category_name']}")
+    print(f"- Attack Type: {attack['name']}")
+    print(f"- Start Time:  {start_time_str}")
+    print(f"- End Time: {end_time_str}")
+
+    filepath = attack["attack_component"][0]["file"]
+    affected_values = attack["attack_type"][0]["affected_value"][0]
+
+    print("- Affected Values:")
+    for key, value in affected_values.items():
+        print(f"\t- {key} = {value}")
+
+    if filepath == "ns-3.cc":
+        start_seconds = time_to_seconds(start_time_str)
+        end_seconds = time_to_seconds(end_time_str)
+        config_ns3(model_path, affected_values, start_seconds, end_seconds)
+    elif filepath == "GridLab-D.glm":
+        config_glm(model_path, affected_values)
+    else:
+        print(f"Warning: Configuration for file type '{filepath}' is not implemented.")
+
+# --- Main Execution ---
 
 def main():
     if len(sys.argv) != 5:
         print("Usage: python attack_broker.py <path_to_model> <attack_id> <start_time> <end_time>")
         sys.exit(1)
 
-    model_path = sys.argv[1]
-    attack_id = sys.argv[2]
-    start_time = sys.argv[3]
-    end_time = sys.argv[4]
+    model_path, attack_id, start_time, end_time = sys.argv[1:5]
 
-    if attack_id != "0":
-        print(f"Attack scheduled from {start_time} to {end_time}.")
-        print("Note: Attack scheduling is a UI feature and is not yet implemented in the simulation core.")
-
-    # Clean up previous run files and create new ones
+    # Clean up previous run files and create new ones by copying originals
     run_ns3_cc = os.path.join(model_path, "run_ns-3.cc")
-    run_gridlabd_glm = os.path.join(model_path, "run_GridLab-D.glm")
     if os.path.exists(run_ns3_cc):
         os.remove(run_ns3_cc)
+
+    run_gridlabd_glm = os.path.join(model_path, "run_GridLab-D.glm")
     if os.path.exists(run_gridlabd_glm):
         os.remove(run_gridlabd_glm)
 
     time.sleep(1)
-
     shutil.copyfile(os.path.join(model_path, "ns-3.cc"), run_ns3_cc)
     shutil.copyfile(os.path.join(model_path, "GridLab-D.glm"), run_gridlabd_glm)
 
-    # Apply attack configuration
-    readfile(attack_id, model_path)
+    # If an attack is selected, apply the configuration
+    if attack_id != "0":
+        apply_attack_config(attack_id, model_path, start_time, end_time)
 
     # Compile simulation
     print("Compiling ns-3 model...")
-    # The CWD is the model path, so the script path is relative to that.
     compile_script_path = '../../scripts/compile-ns3.sh'
     compile_proc = subprocess.run([compile_script_path, 'run_ns-3.cc'],
-                                  capture_output=True, text=True,
-                                  cwd=model_path)
+                                  capture_output=True, text=True, cwd=model_path)
     if compile_proc.returncode != 0:
         print("Compilation failed!")
         print(compile_proc.stdout)
         print(compile_proc.stderr)
-        return # Exit if compilation fails
+        return
 
     print("Compilation successful.")
     print("Starting simulation... This may take a while.")
 
-    # Run the simulation. This will block until run.sh completes.
+    # Run the simulation
     run_script_path = '../../scripts/run.sh'
     sim_proc = subprocess.run([run_script_path],
-                              capture_output=True, text=True,
-                              cwd=model_path)
+                              capture_output=True, text=True, cwd=model_path)
 
-    # The simulation logs are now in ns3.log, gridlabd.log, and fncs.log
-    # in the model directory. We can print the output of run.sh itself.
     print(sim_proc.stdout)
     if sim_proc.returncode != 0:
         print("Simulation script finished with errors.")
