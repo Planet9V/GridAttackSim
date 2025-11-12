@@ -89,8 +89,6 @@ int main (int argc, char *argv[])
     delay_cluster = 3; //3 MilliSeconds
     // Don't remove
     //Flag
-	data_rate_cluster = 1000000;//
-	delay_cluster = 100;//
 
     if(argc < 2){
         cout << "Usage ./first <power grid link model file name>" << endl;
