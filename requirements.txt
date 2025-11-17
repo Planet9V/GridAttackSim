@@ -2,3 +2,6 @@ pandas
 matplotlib
 graphviz
 openai
+fastapi
+uvicorn
+httpx

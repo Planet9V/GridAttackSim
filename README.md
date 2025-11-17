@@ -1,51 +1,14 @@
 
 # GridAttackSim: Smart Grid Attack Simulation Framework
 
+**Note:** This project is currently undergoing a major architectural refactoring. The original GUI-based application is being deprecated in favor of a modern, API-driven backend to support the development of a real-time, interactive "Cyber-Physical Grid Range."
+
 GridAttackSim is a framework that makes it possible to simulate
 various cyber-attacks on the smart grid infrastructure and visualize
 their consequences. GridAttackSim uses a co-simulation approach, and
 it is based on a combination of [GridLAB-D](https://www.gridlabd.org),
 [ns-3](https://www.nsnam.org), and
-[FNCS](https://github.com/FNCS). The framework is extensible by end
-users, and the current release includes five smart grid topologies,
-two smart grid applications (demand response and dynamic pricing), and
-an attack library with four types of attacks (channel jamming,
-malicious code, injection attacks, and message replay). GridAttackSim
-is being developed by the Cyber Range Organization and Design
-([CROND](https://www.jaist.ac.jp/misc/crond/index-en.html))
-NEC-endowed chair at the Japan Advanced Institute of Science and
-Technology ([JAIST](https://www.jaist.ac.jp/english/)) in Ishikawa,
-Japan.
-
-GridAttackSim is intended as a tool that helps researchers investigate
-smart grid security issues and develop technologies for improving
-smart grid security. An overview of how GridAttackSim can be used to
-visualize the consequences of a smart grid cyber-attack is shown
-below.
-
-![GridAttackSim Use](Figures/use_overview.png?raw=true "Overview of the GridAttackSim use")
-
-The architecture of GridAttackSim comprises six main modules, as
-illustrated below:
-* **Preprocessing Module**: Prepare the files needed to run the
-  GridLAB-D simulation and to configure the FNCS broker
-* **Attack Pattern Library**: Store information about the attack type,
-  target and schedule that will be used for the cyber-attack
-  simulation
-* **Model Manager**: Core component of GridAttackSim that coordinates
-  the entire smart grid attack simulation framework
-* **Ns-3**: Discrete-event network simulator
-* **GridLAB-D**: Power distribution system simulation and analysis tool
-* **FNCS Broker**: Component of the FNCS co-simulation framework that
-  mediates the communication between ns-3 and GridLAB-D
-
-![GridAttackSim Architecture](Figures/framework_architecture.png?raw=true "Architecture of the GridAttackSim framework")
-
-GridAttackSim can be extended, and end users can add new smart grid
-topologies or new types of attacks. Please consult the [Developer
-Guide](/developer_guide.md) for more information on how to extend the
-framework.
-
+[FNCS](https://github.com/FNCS).
 
 ## Installation
 
@@ -58,32 +21,38 @@ To run GridAttackSim, you have to first install and configure the
 three external components, FNCS, ns-3, and GridLAB-D. For details,
 please consult our [Installation Guide](/installation_guide.md).
 
-Once the external components are installed, use the
-[releases](https://github.com/crond-jaist/GridAttackSim/releases) page
-to download the latest version of GridAttackSim, and extract the
-source code archive into a directory of your choice.
+Once the external components are installed, you can install the required Python packages:
 
+```bash
+pip install -r requirements.txt
+```
 
-## Quick Start
+## Quick Start (API Backend)
 
-1. Use a terminal window to navigate to the GridAttackSim directory
+The new version of GridAttackSim runs as a backend API service.
 
-2. Start the GridAttackSim GUI
+1. Use a terminal window to navigate to the GridAttackSim directory.
 
-   ```$ python3 GridAttackSim.py```
+2. Start the backend service using Uvicorn:
 
-   ![GridAttackSim GUI](Figures/gui_screenshot.png?raw=true "GridAttackSim GUI")
+   ```bash
+   uvicorn main:app --reload
+   ```
 
-3. Once the GUI is displayed, as shown above, follow the next steps to
-   configure and run a simulation:
-   1. Select the simulation parameters: Smart Grid Model, Application,
-      Attack Category, Attack Type
-   2. Click on the "Run Simulation" button to start the simulation
-   3. When the simulation process finishes, click on "Load Results" to
-      display the output files
-   4. Select the output files of interest, then click on "Show Charts" to
-      visualize the results
+   The API will be available at `http://127.0.0.1:8000`.
 
+3. You can interact with the API using a tool like `curl` or by visiting the interactive documentation at `http://127.0.0.1:8000/docs`.
+
+   To start a simulation, you can send a POST request to the `/simulations/start` endpoint:
+
+   ```bash
+   curl -X POST "http://127.0.0.1:8000/simulations/start" -H "Content-Type: application/json" -d '{
+     "model_name": "13_Nodes_73_Houses",
+     "attack_id": "1",
+     "start_time": "12:00:00",
+     "end_time": "18:00:00"
+   }'
+   ```
 
 ## References
 

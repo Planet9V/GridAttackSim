@@ -1,36 +1,42 @@
 import json
 import shutil
 import os
-import sys
-import fileinput
 import subprocess
 import time
 
-with open('attack_library.json', 'r') as f:
-    distros_dict = json.load(f)
-
-def readfile(index, model_path):
+def get_attack_details(attack_id):
+    with open('attack_library.json', 'r') as f:
+        distros_dict = json.load(f)
     for x in range(len(distros_dict['object'])):
-        if distros_dict['object'][x]["attack_id"]==str(index):
-            print("\n \n------------------------------------------")
-            print("You selected Attack ID: " + str(distros_dict['object'][x]["attack_id"]))
-            print('- Category Name:  ' + str(distros_dict['object'][x]["category_name"]))
-            print('- Attack Type: ' + str(distros_dict['object'][x]["name"]))
-            print('- Description:  ' + str(distros_dict['object'][x]["attack_type"][0]["description"]))
-            print('- Attack Component:  ' + str(distros_dict['object'][x]["attack_component"][0]["component_name"]))
-            print('- Start Time:  ' + str(distros_dict['object'][x]["attack_schedule"][0]["start_time"]))
-            print('- End Time: ' + str(distros_dict['object'][x]["attack_schedule"][0]["end_time"]))
-            
-            filepath = str(distros_dict['object'][x]["attack_component"][0]["file"])
-            file_out = str("run_" + filepath)
-            affected_value = distros_dict['object'][x]["attack_type"][0]["affected_value"][0]
-            print('- Affected Value: ')
-            for key, value in affected_value.items():
-                print('\t- ' + str(key) + " = " + str(value))
-                config(filepath, file_out, key, value, model_path)
+        if distros_dict['object'][x]["attack_id"] == str(attack_id):
+            return distros_dict['object'][x]
+    return None
+
+def apply_attack_config(attack_id, model_path):
+    attack = get_attack_details(attack_id)
+    if not attack:
+        print(f"No attack found for ID: {attack_id}")
+        return
+
+    print("\n \n------------------------------------------")
+    print("You selected Attack ID: " + str(attack["attack_id"]))
+    print('- Category Name:  ' + str(attack["category_name"]))
+    print('- Attack Type: ' + str(attack["name"]))
+    print('- Description:  ' + str(attack["attack_type"][0]["description"]))
+    print('- Attack Component:  ' + str(attack["attack_component"][0]["component_name"]))
+    print('- Start Time:  ' + str(attack["attack_schedule"][0]["start_time"]))
+    print('- End Time: ' + str(attack["attack_schedule"][0]["end_time"]))
+
+    filepath = str(attack["attack_component"][0]["file"])
+    file_out = str("run_" + filepath)
+    affected_value = attack["attack_type"][0]["affected_value"][0]
+    print('- Affected Value: ')
+    for key, value in affected_value.items():
+        print('\t- ' + str(key) + " = " + str(value))
+        _config(filepath, file_out, key, value, model_path)
 
 
-def config(filepath, file_out, key, value, model_path):
+def _config(filepath, file_out, key, value, model_path):
     full_file_out_path = os.path.join(model_path, file_out)
     with open(full_file_out_path, 'r') as f:
         filedata = f.read()
@@ -43,16 +49,8 @@ def config(filepath, file_out, key, value, model_path):
     with open(full_file_out_path, 'w') as f:
         f.write(newdata)
 
-def main():
-    if len(sys.argv) != 5:
-        print("Usage: python attack_broker.py <path_to_model> <attack_id> <start_time> <end_time>")
-        sys.exit(1)
 
-    model_path = sys.argv[1]
-    attack_id = sys.argv[2]
-    start_time = sys.argv[3]
-    end_time = sys.argv[4]
-
+def run_simulation(model_path, attack_id, start_time, end_time):
     if attack_id != "0":
         print(f"Attack scheduled from {start_time} to {end_time}.")
         print("Note: Attack scheduling is a UI feature and is not yet implemented in the simulation core.")
@@ -71,7 +69,7 @@ def main():
     shutil.copyfile(os.path.join(model_path, "GridLab-D.glm"), run_gridlabd_glm)
 
     # Apply attack configuration
-    readfile(attack_id, model_path)
+    apply_attack_config(attack_id, model_path)
 
     # Compile simulation
     print("Compiling ns-3 model...")
@@ -84,7 +82,7 @@ def main():
         print("Compilation failed!")
         print(compile_proc.stdout)
         print(compile_proc.stderr)
-        return # Exit if compilation fails
+        return {"status": "error", "message": "Compilation failed"}
 
     print("Compilation successful.")
     print("Starting simulation... This may take a while.")
@@ -101,9 +99,7 @@ def main():
     if sim_proc.returncode != 0:
         print("Simulation script finished with errors.")
         print(sim_proc.stderr)
+        return {"status": "error", "message": "Simulation failed"}
 
     print("Finished!")
-
-
-if __name__ == '__main__':
-    main()
+    return {"status": "success", "message": "Simulation finished successfully"}
