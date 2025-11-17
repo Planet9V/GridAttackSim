@@ -34,6 +34,41 @@
         {
           "schedule_id": "1",
           "description": "Attack schedule for the simulation.",
+          "start_time": "start_time",
+          "end_time": "end_time"
+        }
+      ]
+    },
+    {
+      "attack_category": "nefarious_activity",
+      "attack_id": "10",
+      "category_name": "Nefarious Activity",
+      "name": "Price Spike Attack",
+      "description": "Causes the market to clear more frequently, leading to price volatility.",
+      "attack_type": [
+        {
+          "type_id": "1",
+          "type_name": "price_spike_attack",
+          "description": "This attack reduces the market clearing period, causing more frequent updates and potential price spikes.",
+          "affected_value": [
+            {
+              "period": 60
+            }
+          ]
+        }
+      ],
+      "attack_component": [
+        {
+          "component_id": "1",
+          "component_name": "Control Systems",
+          "description": "The Auction System is affected",
+          "file": "GridLab-D.glm"
+        }
+      ],
+      "attack_schedule": [
+        {
+          "schedule_id": "1",
+          "description": "Attack schedule for the simulation.",
           "file": "schedule_1",
           "start_time": "12:00:00",
           "end_time": "18:00:00"
@@ -358,11 +393,5 @@
         }
       ]
     }
-
-
-
-
-
-
   ]
 }
